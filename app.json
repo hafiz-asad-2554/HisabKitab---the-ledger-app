@@ -1,0 +1,67 @@
+{
+  "expo": {
+    "name": "HisabKitab",
+    "slug": "hisabkitab",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/hisabkitab-logo.png",
+    "scheme": "hisabkitab",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "icon": "./assets/expo.icon",
+      "bundleIdentifier": "com.hisabkitab.app",
+      "supportsTablet": true,
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "package": "com.hisabkitab.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./assets/images/hisabkitab-logo.png",
+        "backgroundImage": "./assets/images/android-icon-background.png",
+        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.READ_CONTACTS",
+        "android.permission.WRITE_CONTACTS"
+      ]
+    },
+    "web": {
+      "output": "static",
+      "favicon": "./assets/images/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-contacts",
+        {
+          "contactsPermission": "Allow HisabKitab to link your phone contacts to private ledgers."
+        }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#0F172A",
+          "image": "./assets/images/hisabkitab-logo.png",
+          "imageWidth": 76
+        }
+      ],
+      "@react-native-community/datetimepicker",
+      "expo-secure-store",
+      "expo-sharing"
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "fd74d710-ccc7-4e2c-ad8b-f9f95ae361a5"
+      }
+    }
+  }
+}
