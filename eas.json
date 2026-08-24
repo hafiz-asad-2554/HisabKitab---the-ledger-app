@@ -12,8 +12,11 @@
     },
     "production": {
       "autoIncrement": true,
+      "env": {
+        "EXPO_NO_DOCTOR": "true"
+      },
       "android": {
-        "buildType": "app-bundle"
+        "buildType": "apk"
       }
     }
   }
