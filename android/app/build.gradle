@@ -97,6 +97,13 @@ android {
 
         buildConfigField "String", "REACT_NATIVE_RELEASE_LEVEL", "\"${findProperty('reactNativeReleaseLevel') ?: 'stable'}\""
     }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    kotlinOptions {
+        jvmTarget = "17"
+    }
     signingConfigs {
         debug {
             storeFile file('debug.keystore')
@@ -181,7 +188,8 @@ dependencies {
     }
 
     // Firebase Bill of Materials (BoM) & Firebase Auth
-    implementation platform('com.google.firebase:firebase-bom:33.9.0')
+    // Note: 33.7.0 used for Kotlin 2.1.x binary compatibility on EAS Build
+    implementation platform('com.google.firebase:firebase-bom:33.7.0')
     implementation 'com.google.firebase:firebase-auth'
 
     // Android Credential Manager API & Google ID Library
