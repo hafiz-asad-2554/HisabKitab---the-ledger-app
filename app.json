@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "HisabKitab",
+    "name": "Hisab Kitab",
     "slug": "hisabkitab",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -17,6 +17,7 @@
     },
     "android": {
       "package": "com.hisabkitab.app",
+      "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/hisabkitab-logo.png",
@@ -35,6 +36,9 @@
     },
     "plugins": [
       "expo-router",
+      "@react-native-firebase/app",
+      "@react-native-firebase/auth",
+      "@react-native-google-signin/google-signin",
       [
         "expo-contacts",
         {
@@ -51,7 +55,8 @@
       ],
       "@react-native-community/datetimepicker",
       "expo-secure-store",
-      "expo-sharing"
+      "expo-sharing",
+      "expo-image"
     ],
     "experiments": {
       "typedRoutes": true,
