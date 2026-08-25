@@ -50,11 +50,12 @@ export default function KhataDirectoryScreen() {
     void refreshLinked();
 
     // Event listener for native device contact updates
-    const listener = addContactsChangeListener(() => {
-      void refreshLinked();
-    });
-
-    return () => listener.remove();
+    if (Platform.OS !== 'web' && typeof addContactsChangeListener === 'function') {
+      const listener = addContactsChangeListener(() => {
+        void refreshLinked();
+      });
+      return () => listener.remove();
+    }
   }, []); // Empty dependency array prevents re-render recursion
 
   // Memoize global net balance calculation to prevent O(N * M) reduction on every render
