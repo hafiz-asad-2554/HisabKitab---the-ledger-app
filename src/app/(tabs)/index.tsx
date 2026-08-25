@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity, Modal,
   TextInput, Alert, KeyboardAvoidingView, Platform, ScrollView, Image,
@@ -7,13 +7,12 @@ import { Contact, useAppStore } from '../../store';
 import { useRouter } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import { DeviceContact, getDeviceContact, pickDeviceContact } from '../../services/device-contacts';
-import { addContactsChangeListener } from 'expo-contacts';
+import { addContactsChangeListener } from 'expo-contacts/legacy';
 
 export default function KhataDirectoryScreen() {
   const router = useRouter();
   const contacts = useAppStore(state => state.contacts);
   const addContact = useAppStore(state => state.addContact);
-  const updateContact = useAppStore(state => state.updateContact);
   const profile = useAppStore(state => state.profile);
   const unreadCount = useAppStore(state => state.unreadNotificationCount);
 
@@ -24,10 +23,14 @@ export default function KhataDirectoryScreen() {
   const [deviceContactId, setDeviceContactId] = useState<string | undefined>();
   const [deviceAvatarUri, setDeviceAvatarUri] = useState<string | undefined>();
 
+  // Decoupled useEffect to avoid infinite loop when contacts update
   useEffect(() => {
     const refreshLinked = async () => {
+      const currentContacts = useAppStore.getState().contacts;
+      const updateContactFn = useAppStore.getState().updateContact;
+
       await Promise.all(
-        contacts
+        currentContacts
           .filter(c => c.is_linked_to_device_contacts && c.device_contact_identifier)
           .map(async c => {
             const latest = await getDeviceContact(c.device_contact_identifier!);
@@ -36,27 +39,47 @@ export default function KhataDirectoryScreen() {
               (latest.name !== c.display_name ||
                 latest.phone !== c.phone_number ||
                 latest.avatarUri !== c.person_avatar_uri)
-            )
-              updateContact(c.person_id, latest.name, latest.phone, c.notes, latest.avatarUri);
+            ) {
+              updateContactFn(c.person_id, latest.name, latest.phone, c.notes, latest.avatarUri);
+            }
           })
       );
     };
+
+    // Initial sync on mount
+    void refreshLinked();
+
+    // Event listener for native device contact updates
     const listener = addContactsChangeListener(() => {
       void refreshLinked();
     });
-    return () => listener.remove();
-  }, [contacts, updateContact]);
 
-  // Calculate global net balance
-  const globalBalance = contacts.reduce((total, contact) => {
-    const contactNet = contact.transactions.reduce(
-      (acc, t) => acc + (t.given_amount - t.taken_amount),
-      0
-    );
-    return total + contactNet;
-  }, 0);
+    return () => listener.remove();
+  }, []); // Empty dependency array prevents re-render recursion
+
+  // Memoize global net balance calculation to prevent O(N * M) reduction on every render
+  const globalBalance = useMemo(() => {
+    return contacts.reduce((total, contact) => {
+      const contactNet = contact.transactions.reduce(
+        (acc, t) => acc + (t.given_amount - t.taken_amount),
+        0
+      );
+      return total + contactNet;
+    }, 0);
+  }, [contacts]);
 
   const isNetPositive = globalBalance >= 0;
+
+  // Memoize search-filtered contacts array for FlatList
+  const filteredContacts = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return contacts;
+    return contacts.filter(
+      c =>
+        c.display_name.toLowerCase().includes(q) ||
+        c.phone_number.includes(q)
+    );
+  }, [contacts, query]);
 
   const handleAddContact = () => {
     if (!newName.trim()) {
@@ -90,7 +113,7 @@ export default function KhataDirectoryScreen() {
     setDeviceContactId(contact.id);
   };
 
-  const renderContact = ({ item }: { item: Contact }) => {
+  const renderContact = useCallback(({ item }: { item: Contact }) => {
     const contactNet = item.transactions.reduce(
       (acc, t) => acc + (t.given_amount - t.taken_amount),
       0
@@ -122,7 +145,7 @@ export default function KhataDirectoryScreen() {
         </View>
       </TouchableOpacity>
     );
-  };
+  }, [router]);
 
   return (
     <View style={styles.container}>
@@ -203,11 +226,7 @@ export default function KhataDirectoryScreen() {
       <Text style={styles.sectionTitle}>People Directory</Text>
 
       <FlatList
-        data={contacts.filter(
-          c =>
-            c.display_name.toLowerCase().includes(query.toLowerCase()) ||
-            c.phone_number.includes(query)
-        )}
+        data={filteredContacts}
         keyExtractor={item => item.person_id}
         renderItem={renderContact}
         contentContainerStyle={styles.listContainer}

@@ -212,7 +212,7 @@ export function scheduleAutoSync() {
  */
 export function initAutoSyncListeners() {
   // Subscribe to store changes: auto-sync when contacts or crops change
-  useAppStore.subscribe((state, prevState) => {
+  const unsubscribeStore = useAppStore.subscribe((state, prevState) => {
     if (!state.autoSyncEnabled) return;
     if (state.contacts !== prevState.contacts || state.crops !== prevState.crops) {
       scheduleAutoSync();
@@ -230,6 +230,7 @@ export function initAutoSyncListeners() {
   });
 
   return () => {
+    unsubscribeStore();
     subscription.remove();
     if (autoSyncDebounce) clearTimeout(autoSyncDebounce);
   };

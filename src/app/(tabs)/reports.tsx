@@ -1,7 +1,12 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, ScrollView } from 'react-native';
 import { useAppStore } from '../../store';
-import { exportContactsCSV, exportContactsPDF, exportCropsCSV } from '../../utils/exportLedger';
+import {
+  exportFullLedgerPDF,
+  exportLedgerXLSX,
+  exportContactsCSV,
+  exportCropsCSV,
+} from '../../utils/exportLedger';
 import { importWorkbook } from '../../utils/importLedger';
 
 export default function Reports() {
@@ -10,6 +15,14 @@ export default function Reports() {
   const rows = contacts.reduce((n, c) => n + c.transactions.length, 0);
 
   const [importing, setImporting] = useState(false);
+  const [exporting, setExporting] = useState(false);
+
+  const run = async (fn: () => Promise<void>) => {
+    setExporting(true);
+    try { await fn(); }
+    catch (err) { Alert.alert('Export Failed', err instanceof Error ? err.message : 'Unknown error'); }
+    finally { setExporting(false); }
+  };
 
   const handleImportWorkbook = async () => {
     setImporting(true);
@@ -18,7 +31,7 @@ export default function Reports() {
       if (res.success) {
         Alert.alert(
           'Import Successful',
-          `Imported ${res.contactsImported} contacts and ${res.cropsImported} crops.${
+          `Imported ${res.contactsImported} contacts, ${res.transactionsImported} transactions, and ${res.cropsImported} crops.${
             res.errors.length > 0 ? `\n\nWarnings:\n${res.errors.join('\n')}` : ''
           }`
         );
@@ -34,43 +47,52 @@ export default function Reports() {
 
   return (
     <ScrollView style={styles.page} contentContainerStyle={styles.content}>
-      <Text style={styles.head}>Ledger statements & Data</Text>
+      <Text style={styles.head}>Ledger Statements & Data</Text>
       <Text style={styles.copy}>
-        Your local ledger contains {contacts.length} contacts ({rows} transactions) and {crops.length} crop cycles.
+        {contacts.length} contacts · {rows} transactions · {crops.length} crop cycles
       </Text>
 
       {/* Export Section */}
       <Text style={styles.sectionHeader}>Exports</Text>
 
-      <TouchableOpacity style={styles.card} onPress={() => exportContactsPDF(contacts)}>
-        <Text style={styles.cardTitle}>Export Contacts Summary PDF</Text>
-        <Text style={styles.cardCopy}>Generate a printable overview statement of all contacts</Text>
+      <TouchableOpacity style={styles.card} onPress={() => run(() => exportFullLedgerPDF(contacts, crops))} disabled={exporting}>
+        {exporting ? <ActivityIndicator color="#10B981" /> : <>
+          <Text style={styles.cardTitle}>📄 Full Ledger PDF</Text>
+          <Text style={styles.cardCopy}>Summary Dashboard + per-contact account statements + crop analytics (matches reference format)</Text>
+        </>}
       </TouchableOpacity>
 
-      <TouchableOpacity style={styles.card} onPress={() => exportContactsCSV(contacts)}>
-        <Text style={styles.cardTitle}>Export Contacts CSV</Text>
-        <Text style={styles.cardCopy}>Download contacts as CSV for spreadsheet software</Text>
+      <TouchableOpacity style={styles.card} onPress={() => run(() => exportLedgerXLSX(contacts, crops))} disabled={exporting}>
+        {exporting ? <ActivityIndicator color="#10B981" /> : <>
+          <Text style={styles.cardTitle}>📊 Full Ledger Excel (.xlsx)</Text>
+          <Text style={styles.cardCopy}>Multi-sheet: Summary Dashboard · Account Statements · Crop Analytics</Text>
+        </>}
       </TouchableOpacity>
 
-      <TouchableOpacity style={styles.card} onPress={() => exportCropsCSV(crops)}>
-        <Text style={styles.cardTitle}>Export Crops CSV</Text>
-        <Text style={styles.cardCopy}>Export all crop cycles and financial tallies to CSV</Text>
+      <TouchableOpacity style={styles.card} onPress={() => run(() => exportContactsCSV(contacts))} disabled={exporting}>
+        {exporting ? <ActivityIndicator color="#10B981" /> : <>
+          <Text style={styles.cardTitle}>📋 Contacts CSV</Text>
+          <Text style={styles.cardCopy}>Name, Phone, Email, Net Balance, Status</Text>
+        </>}
+      </TouchableOpacity>
+
+      <TouchableOpacity style={styles.card} onPress={() => run(() => exportCropsCSV(crops))} disabled={exporting}>
+        {exporting ? <ActivityIndicator color="#10B981" /> : <>
+          <Text style={styles.cardTitle}>🌾 Crops CSV</Text>
+          <Text style={styles.cardCopy}>Crop cycles with cost, revenue, and net profit/loss</Text>
+        </>}
       </TouchableOpacity>
 
       {/* Import Section */}
       <Text style={[styles.sectionHeader, { marginTop: 16 }]}>Data Import</Text>
 
       <TouchableOpacity style={styles.card} onPress={handleImportWorkbook} disabled={importing}>
-        {importing ? (
-          <ActivityIndicator color="#10B981" />
-        ) : (
-          <>
-            <Text style={styles.cardTitle}>Import Excel / CSV Workbook</Text>
-            <Text style={styles.cardCopy}>
-              Select a multi-sheet Excel (.xlsx) or CSV file. Automatically maps sheets to contacts or crop cycles.
-            </Text>
-          </>
-        )}
+        {importing ? <ActivityIndicator color="#10B981" /> : <>
+          <Text style={styles.cardTitle}>⬆ Import Excel / CSV Workbook</Text>
+          <Text style={styles.cardCopy}>
+            Reads multi-sheet .xlsx or .csv. Detects "Account Statement Ledger – Name" sheets and imports transactions. Generic sheets with Name/Phone columns are imported as contacts.
+          </Text>
+        </>}
       </TouchableOpacity>
     </ScrollView>
   );

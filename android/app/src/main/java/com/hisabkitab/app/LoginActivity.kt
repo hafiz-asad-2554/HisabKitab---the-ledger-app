@@ -28,7 +28,7 @@ class LoginActivity : AppCompatActivity() {
         private const val TAG = "HisabKitab_Auth"
         
         // Replace with your Web Client ID from Firebase Console -> Project Settings -> General -> Web API Key / OAuth 2.0 Web Client ID
-        private const val WEB_CLIENT_ID = "YOUR_WEB_CLIENT_ID.apps.googleusercontent.com"
+        private const val WEB_CLIENT_ID = "836368558078-07em0u27t9ijf9u29c9i0lt1ptiick5u.apps.googleusercontent.com"
     }
 
     private lateinit var auth: FirebaseAuth
@@ -93,7 +93,6 @@ class LoginActivity : AppCompatActivity() {
             visibility = View.GONE
         }
         layout.addView(progressBar)
-
         return layout
     }
 

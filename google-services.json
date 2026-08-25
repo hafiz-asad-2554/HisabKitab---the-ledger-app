@@ -12,7 +12,20 @@
           "package_name": "com.hisabkitab.app"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "836368558078-l2a6m0ddioquf14etohtt2re0c4i8t7o.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.hisabkitab.app",
+            "certificate_hash": "5e8f16062ea3cd2c4a0d547876baa6f38cabf625"
+          }
+        },
+        {
+          "client_id": "836368558078-07em0u27t9ijf9u29c9i0lt1ptiick5u.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyAvNx4SgSvnmE3XpMNNIhFptW1ZhfnlP4k"
@@ -20,7 +33,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "836368558078-07em0u27t9ijf9u29c9i0lt1ptiick5u.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }

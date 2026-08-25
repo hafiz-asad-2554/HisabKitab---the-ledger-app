@@ -2,6 +2,7 @@ import * as SecureStore from 'expo-secure-store';
 import { useEffect, useState, useCallback } from 'react';
 import * as WebBrowser from 'expo-web-browser';
 import { makeRedirectUri, useAuthRequest, ResponseType } from 'expo-auth-session';
+import Constants from 'expo-constants';
 import { useAppStore } from '../store';
 import { secureCredentials } from '../services/secure-credentials';
 
@@ -16,21 +17,22 @@ const discovery = {
 };
 
 /**
- * Google Client ID – replace with your actual OAuth 2.0 Client ID from
- * the Google Cloud Console (Credentials → OAuth 2.0 Client IDs → Web application).
- *
- * For Expo dev builds, use the proxy redirect via makeRedirectUri().
+ * Google Client ID – resolves from environment variable, Constants manifest extra,
+ * or falls back to the configured Firebase Web Client ID from google-services.json.
  */
-const GOOGLE_CLIENT_ID = '<YOUR_GOOGLE_CLIENT_ID>';
+const GOOGLE_CLIENT_ID =
+  process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID ||
+  Constants.expoConfig?.extra?.googleClientId ||
+  '836368558078-07em0u27t9ijf9u29c9i0lt1ptiick5u.apps.googleusercontent.com';
 
 /**
  * Hook that initiates Google OAuth flow using expo-auth-session.
  *
  * OAuth Fix Notes:
- * - Uses `useProxy: false` and `scheme` redirect for production builds
+ * - Dynamically loads Client ID to prevent invalid_client 400 errors
+ * - Uses `scheme` redirect for bare / standalone Expo builds
  * - Includes Google Drive file scope for sync functionality
  * - Stores both access token in SecureStore and updates the Drive credentials
- * - Pre-validates the redirect URI to avoid 400 Bad Request
  */
 export const useGoogleSignIn = () => {
   const updateProfile = useAppStore(state => state.updateProfile);
@@ -91,7 +93,7 @@ export const useGoogleSignIn = () => {
     setAccessToken(token);
 
     // Fetch the user's basic profile information
-    fetch(`https://www.googleapis.com/oauth2/v2/userinfo`, {
+    fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then(res => {
