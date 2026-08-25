@@ -1,4 +1,4 @@
-import auth from '@react-native-firebase/auth';
+import { getAuth, signInWithCredential, signOut, GoogleAuthProvider } from '@react-native-firebase/auth';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { Alert } from 'react-native';
 
@@ -35,10 +35,11 @@ export const signInWithGoogle = async (webClientId?: string) => {
     }
 
     // 3. Create Firebase credential
-    const googleCredential = auth.GoogleAuthProvider.credential(idToken);
+    const googleCredential = GoogleAuthProvider.credential(idToken);
 
     // 4. Authenticate with Firebase Auth
-    const userCredential = await auth().signInWithCredential(googleCredential);
+    const authInstance = getAuth();
+    const userCredential = await signInWithCredential(authInstance, googleCredential);
     return userCredential.user;
   } catch (error: any) {
     console.error('[HisabKitab Firebase Auth Error]:', error);
@@ -53,7 +54,8 @@ export const signInWithGoogle = async (webClientId?: string) => {
 export const signOutUser = async () => {
   try {
     await GoogleSignin.signOut();
-    await auth().signOut();
+    const authInstance = getAuth();
+    await signOut(authInstance);
   } catch (error) {
     console.error('[HisabKitab SignOut Error]:', error);
   }
