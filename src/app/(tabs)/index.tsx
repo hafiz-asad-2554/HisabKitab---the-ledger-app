@@ -8,6 +8,7 @@ import { useRouter } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import { DeviceContact, getDeviceContact, pickDeviceContact } from '../../services/device-contacts';
 import { addContactsChangeListener } from 'expo-contacts/legacy';
+import { ContextSwitcher } from '../../components/ContextSwitcher';
 
 export default function KhataDirectoryScreen() {
   const router = useRouter();
@@ -194,6 +195,9 @@ export default function KhataDirectoryScreen() {
           </TouchableOpacity>
         </View>
       </View>
+
+      {/* Global Context Switcher */}
+      <ContextSwitcher activePillar="home" />
 
       {/* Global Net View Card */}
       <View

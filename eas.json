@@ -16,6 +16,20 @@
     },
     "production": {
       "autoIncrement": true,
+      "distribution": "store",
+      "env": {
+        "EXPO_NO_DOCTOR": "true",
+        "NODE_ENV": "production"
+      },
+      "android": {
+        "buildType": "app-bundle"
+      },
+      "ios": {
+        "resourceClass": "m-medium"
+      }
+    },
+    "production-apk": {
+      "distribution": "internal",
       "env": {
         "EXPO_NO_DOCTOR": "true",
         "NODE_ENV": "production"

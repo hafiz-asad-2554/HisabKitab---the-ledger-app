@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, ScrollView } from 'react-native';
 import { useAppStore } from '../../store';
+import { useBusinessStore } from '../../store/businessStore';
+import { useCapitalStore } from '../../store/capitalStore';
 import {
   exportFullLedgerPDF,
   exportLedgerXLSX,
@@ -12,6 +14,11 @@ import { importWorkbook } from '../../utils/importLedger';
 export default function Reports() {
   const contacts = useAppStore(s => s.contacts);
   const crops = useAppStore(s => s.crops);
+  const bizParties = useBusinessStore(s => s.parties);
+  const bizTxns = useBusinessStore(s => s.bizTransactions);
+  const capitalPools = useCapitalStore(s => s.capitalPools);
+  const capitalExps = useCapitalStore(s => s.capitalExpenses);
+
   const rows = contacts.reduce((n, c) => n + c.transactions.length, 0);
 
   const [importing, setImporting] = useState(false);
@@ -49,7 +56,7 @@ export default function Reports() {
     <ScrollView style={styles.page} contentContainerStyle={styles.content}>
       <Text style={styles.head}>Ledger Statements & Data</Text>
       <Text style={styles.copy}>
-        {contacts.length} contacts · {rows} transactions · {crops.length} crop cycles
+        {contacts.length} contacts ({rows} tx) · {crops.length} crop cycles · {bizParties.length} biz parties ({bizTxns.length} tx) · {capitalPools.length} capital pools ({capitalExps.length} items)
       </Text>
 
       {/* Export Section */}

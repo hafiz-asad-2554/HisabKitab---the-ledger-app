@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, FlatList, TouchableOpacity, Modal, TextInput, A
 import { CropExpense, useAppStore } from '../../store';
 import { useRouter } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
+import { ContextSwitcher } from '../../components/ContextSwitcher';
 
 export default function CropsScreen() {
   const router = useRouter();
@@ -99,6 +100,7 @@ export default function CropsScreen() {
 
   return (
     <View style={styles.container}>
+      <ContextSwitcher activePillar="crops" />
       <Text style={styles.sectionTitle}>Active Crop Cycles</Text>
 
       <FlatList

@@ -27,6 +27,8 @@ export default function RootLayout() {
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="person/[id]" options={{ title: 'Ledger' }} />
         <Stack.Screen name="crop/[id]" options={{ title: 'Crop Ledger' }} />
+        <Stack.Screen name="business/[partyId]" options={{ title: 'Party Ledger' }} />
+        <Stack.Screen name="capital/[poolId]" options={{ title: 'Capital Pool' }} />
         <Stack.Screen name="profile" options={{ title: 'My Profile' }} />
         <Stack.Screen name="notifications" options={{ title: 'Notifications' }} />
       </Stack>

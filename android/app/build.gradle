@@ -192,7 +192,10 @@ dependencies {
 
     // Firebase Bill of Materials (BoM) & Firebase Auth
     // Note: 33.7.0 used for Kotlin 2.1.x binary compatibility on EAS Build
-    implementation platform('com.google.firebase:firebase-bom:33.7.0')
+    // React Native Firebase 26 resolves a newer BoM by default. Pin the entire
+    // app graph here: Firebase Auth 24.2 is compiled with Kotlin 2.3 metadata,
+    // while Expo SDK 57 uses Kotlin 2.1.20.
+    implementation enforcedPlatform('com.google.firebase:firebase-bom:33.7.0')
     implementation 'com.google.firebase:firebase-auth'
 
     // Android Credential Manager API & Google ID Library
