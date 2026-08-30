@@ -38,8 +38,10 @@ export default function Reports() {
       if (res.success) {
         Alert.alert(
           'Import Successful',
-          `Imported ${res.contactsImported} contacts, ${res.transactionsImported} transactions, and ${res.cropsImported} crops.${
-            res.errors.length > 0 ? `\n\nWarnings:\n${res.errors.join('\n')}` : ''
+          `Imported ${res.contactsImported} contacts, ${res.transactionsImported} transactions, ${res.cropsImported} crops, and ${res.cropRecordsImported} crop records across ${res.sheetsProcessed} sheets.${
+            res.warnings.length > 0 ? `\n\n⚠️ Warnings:\n${res.warnings.join('\n')}` : ''
+          }${
+            res.errors.length > 0 ? `\n\n❌ Errors:\n${res.errors.join('\n')}` : ''
           }`
         );
       } else if (res.errors.length > 0) {
@@ -97,7 +99,7 @@ export default function Reports() {
         {importing ? <ActivityIndicator color="#10B981" /> : <>
           <Text style={styles.cardTitle}>⬆ Import Excel / CSV Workbook</Text>
           <Text style={styles.cardCopy}>
-            Reads multi-sheet .xlsx or .csv. Detects "Account Statement Ledger – Name" sheets and imports transactions. Generic sheets with Name/Phone columns are imported as contacts.
+            Supports all 4 HisabKitab workbook types: Personal (given/taken), Business (Jama/Naam), Capital Projects (budget/amount), Agriculture (crop cost categories). Each data sheet becomes its own ledger. Summary/rollup sheets are auto-skipped.
           </Text>
         </>}
       </TouchableOpacity>

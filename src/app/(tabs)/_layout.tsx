@@ -12,7 +12,7 @@ const options = {
 export default function TabsLayout() {
   return (
     <Tabs screenOptions={options}>
-      {/* ── Existing: Home / Khata ── */}
+      {/* ── Tab 1: Home (Home & Personal pillar + global view) ── */}
       <Tabs.Screen
         name="index"
         options={{
@@ -22,37 +22,7 @@ export default function TabsLayout() {
         }}
       />
 
-      {/* ── Existing: Agriculture / Crop ── */}
-      <Tabs.Screen
-        name="crops"
-        options={{
-          title: 'Agriculture',
-          tabBarLabel: 'Crops',
-          tabBarIcon: ({ color, size }) => <MaterialIcons name="agriculture" size={size} color={color} />,
-        }}
-      />
-
-      {/* ── NEW: Business / Shop Ledger ── */}
-      <Tabs.Screen
-        name="business"
-        options={{
-          title: 'Business Ledger',
-          tabBarLabel: 'Business',
-          tabBarIcon: ({ color, size }) => <MaterialIcons name="store" size={size} color={color} />,
-        }}
-      />
-
-      {/* ── NEW: Capital Pools / Task Budgets ── */}
-      <Tabs.Screen
-        name="capital"
-        options={{
-          title: 'Capital Pools',
-          tabBarLabel: 'Capital',
-          tabBarIcon: ({ color, size }) => <MaterialIcons name="account-balance-wallet" size={size} color={color} />,
-        }}
-      />
-
-      {/* ── Existing: Share / Sync ── */}
+      {/* ── Tab 2: Share / Sync ── */}
       <Tabs.Screen
         name="share"
         options={{
@@ -62,7 +32,7 @@ export default function TabsLayout() {
         }}
       />
 
-      {/* ── Existing: Reports ── */}
+      {/* ── Tab 3: Smart Reports ── */}
       <Tabs.Screen
         name="reports"
         options={{
@@ -72,13 +42,36 @@ export default function TabsLayout() {
         }}
       />
 
-      {/* ── Existing: More / Settings ── */}
+      {/* ── Tab 4: More (Settings + relocated pillars: Crops, Business, Capital) ── */}
       <Tabs.Screen
         name="more"
         options={{
           title: 'More',
           tabBarLabel: 'More',
           tabBarIcon: ({ color, size }) => <MaterialIcons name="more-horiz" size={size} color={color} />,
+        }}
+      />
+
+      {/* ── Relocated screens: still registered as routes but hidden from the tab bar ── */}
+      <Tabs.Screen
+        name="crops"
+        options={{
+          title: 'Agriculture',
+          href: null,  // hides from tab bar; route still navigable via router.push('/(tabs)/crops')
+        }}
+      />
+      <Tabs.Screen
+        name="business"
+        options={{
+          title: 'Business Ledger',
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="capital"
+        options={{
+          title: 'Capital Pools',
+          href: null,
         }}
       />
     </Tabs>
