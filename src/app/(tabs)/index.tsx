@@ -151,7 +151,7 @@ export default function KhataDirectoryScreen() {
 
   return (
     <View style={styles.container}>
-      {/* ── Top Bar with Profile & Notification Bell ── */}
+      {/* ── Pinned Top Bar with Profile & Notification Bell ── */}
       <View style={styles.topbar}>
         <View style={styles.brandRow}>
           <Image
@@ -196,45 +196,49 @@ export default function KhataDirectoryScreen() {
         </View>
       </View>
 
-      {/* Global Context Switcher */}
+      {/* ── Pinned Financial Pillars Header ── */}
       <ContextSwitcher activePillar="home" />
 
-      {/* Global Net View Card */}
-      <View
-        style={[
-          styles.globalCard,
-          { backgroundColor: isNetPositive ? '#064E3B' : '#7F1D1D' },
-        ]}
-      >
-        <Text style={styles.globalLabel}>Global Net Balance</Text>
-        <Text
-          style={[
-            styles.globalAmount,
-            { color: isNetPositive ? '#34D399' : '#FCA5A5' },
-          ]}
-        >
-          {globalBalance >= 0 ? '+' : ''}
-          {Math.abs(globalBalance).toFixed(2)}
-        </Text>
-        <Text style={styles.globalSubtext}>
-          {isNetPositive ? 'Net Receivable (Lena Hai)' : 'Net Payable (Dena Hai)'}
-        </Text>
-      </View>
-
-      <TextInput
-        value={query}
-        onChangeText={setQuery}
-        placeholder="Search contacts"
-        placeholderTextColor="#94A3B8"
-        style={styles.search}
-      />
-      <Text style={styles.sectionTitle}>People Directory</Text>
-
+      {/* ── Scrollable Content (ListHeader + Directory Items) ── */}
       <FlatList
         data={filteredContacts}
         keyExtractor={item => item.person_id}
         renderItem={renderContact}
         contentContainerStyle={styles.listContainer}
+        ListHeaderComponent={
+          <View>
+            {/* Global Net View Card */}
+            <View
+              style={[
+                styles.globalCard,
+                { backgroundColor: isNetPositive ? '#064E3B' : '#7F1D1D' },
+              ]}
+            >
+              <Text style={styles.globalLabel}>Global Net Balance</Text>
+              <Text
+                style={[
+                  styles.globalAmount,
+                  { color: isNetPositive ? '#34D399' : '#FCA5A5' },
+                ]}
+              >
+                {globalBalance >= 0 ? '+' : ''}
+                {Math.abs(globalBalance).toFixed(2)}
+              </Text>
+              <Text style={styles.globalSubtext}>
+                {isNetPositive ? 'Net Receivable (Lena Hai)' : 'Net Payable (Dena Hai)'}
+              </Text>
+            </View>
+
+            <TextInput
+              value={query}
+              onChangeText={setQuery}
+              placeholder="Search contacts"
+              placeholderTextColor="#94A3B8"
+              style={styles.search}
+            />
+            <Text style={styles.sectionTitle}>People Directory</Text>
+          </View>
+        }
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyText}>

@@ -1,8 +1,9 @@
-// Bug 3 fix: use legacy API to avoid expo-file-system v54 breaking change
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 import XLSX from 'xlsx';
 import { useAppStore } from '../store';
+import { useBusinessStore } from '../store/businessStore';
+import { useCapitalStore } from '../store/capitalStore';
 
 /* ─────────────────────────────────────────────────────────────────────────────
    CANONICAL FIELD MAPPING
@@ -393,11 +394,13 @@ async function processSheet(
 
   switch (detected.sheetType) {
     case 'personal_transaction':
+      await importPersonalSheet(sheetName, dataRows, detected.colMap, store, result);
+      break;
     case 'business_transaction':
-      await importTransactionSheet(sheetName, dataRows, detected.colMap, store, result);
+      await importBusinessSheet(sheetName, dataRows, detected.colMap, result);
       break;
     case 'capital_project':
-      await importCapitalSheet(sheetName, dataRows, detected.colMap, store, result);
+      await importCapitalSheet(sheetName, dataRows, detected.colMap, result);
       break;
     case 'agriculture_crop':
       await importAgricultureSheet(sheetName, dataRows, detected.colMap, store, result);
@@ -408,11 +411,11 @@ async function processSheet(
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
-   PERSONAL / BUSINESS TRANSACTION SHEETS
-   Each sheet → one contact/ledger in the app.
+   1. PERSONAL TRANSACTION SHEETS (Home & Personal Pillar)
+   Each sheet → one contact in useAppStore.
 ───────────────────────────────────────────────────────────────────────────── */
 
-async function importTransactionSheet(
+async function importPersonalSheet(
   sheetName: string,
   dataRows: Record<string, any>[],
   colMap: Record<string, string>,
@@ -421,7 +424,6 @@ async function importTransactionSheet(
 ): Promise<void> {
   const contactName = sheetName.trim();
 
-  // Find or create the contact
   let contact = useAppStore
     .getState()
     .contacts.find(
@@ -439,9 +441,7 @@ async function importTransactionSheet(
   }
 
   if (!contact) {
-    result.errors.push(
-      `Could not create contact for sheet "${sheetName}" – skipped.`
-    );
+    result.errors.push(`Could not create personal contact for sheet "${sheetName}" – skipped.`);
     return;
   }
 
@@ -452,13 +452,10 @@ async function importTransactionSheet(
     try {
       if (isBlankRow(rawRow)) continue;
       if (isPlaceholderRow(rawRow)) {
-        result.warnings.push(
-          `Sheet "${sheetName}": placeholder/example row skipped.`
-        );
+        result.warnings.push(`Sheet "${sheetName}": placeholder row skipped.`);
         continue;
       }
       if (isTotalRow({}, rawRow)) {
-        // Use for validation only – don't import as a transaction
         const mapped = mapRow(rawRow, colMap);
         const bal = parseAmount(mapped.running_balance);
         if (bal !== 0) importedBalance.push(bal);
@@ -476,12 +473,11 @@ async function importTransactionSheet(
       const rawDate = mapped.date;
       const dateStr = parseDate(rawDate) ?? new Date().toISOString();
 
-      // Re-fetch store state for each transaction (store updates are synchronous)
       useAppStore.getState().addTransaction(contact.person_id, desc, given, taken, dateStr);
       txImported++;
     } catch (rowErr) {
       result.errors.push(
-        `Row error in "${sheetName}": ${
+        `Row error in personal sheet "${sheetName}": ${
           rowErr instanceof Error ? rowErr.message : 'Parse error'
         }`
       );
@@ -490,90 +486,138 @@ async function importTransactionSheet(
 
   result.transactionsImported += txImported;
   result.sheetsProcessed++;
-
-  // Validation pass: recompute running balance vs stated total
-  if (importedBalance.length > 0) {
-    const stated = importedBalance[importedBalance.length - 1];
-    const currentContact = useAppStore
-      .getState()
-      .contacts.find(c => c.person_id === contact!.person_id);
-    if (currentContact) {
-      const computed = currentContact.transactions.reduce(
-        (acc, t) => acc + t.given_amount - t.taken_amount,
-        0
-      );
-      if (Math.abs(computed - stated) > 0.01) {
-        result.warnings.push(
-          `Sheet "${sheetName}": computed balance ${computed.toFixed(2)} ≠ stated balance ${stated.toFixed(2)} – check source data.`
-        );
-      }
-    }
-  }
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
-   CAPITAL PROJECT SHEETS
-   Single-amount column (Amount) + Running Balance.
-   Each sheet → one contact in the app (projects tracked as contacts).
+   2. BUSINESS TRANSACTION SHEETS (Business Ledger Pillar)
+   Each sheet → one BusinessParty in useBusinessStore.
+───────────────────────────────────────────────────────────────────────────── */
+
+async function importBusinessSheet(
+  sheetName: string,
+  dataRows: Record<string, any>[],
+  colMap: Record<string, string>,
+  result: ImportResult
+): Promise<void> {
+  const partyName = sheetName.trim();
+  const bizStore = useBusinessStore.getState();
+
+  let party = bizStore.parties.find(
+    p => p.name.toLowerCase() === partyName.toLowerCase()
+  );
+
+  if (!party) {
+    bizStore.addParty(partyName, '', 'customer', 'Imported Business Ledger');
+    party = useBusinessStore.getState().parties.find(
+      p => p.name.toLowerCase() === partyName.toLowerCase()
+    );
+    if (party) result.contactsImported++;
+  }
+
+  if (!party) {
+    result.errors.push(`Could not create business party for sheet "${sheetName}" – skipped.`);
+    return;
+  }
+
+  let txImported = 0;
+
+  for (const rawRow of dataRows) {
+    try {
+      if (isBlankRow(rawRow)) continue;
+      if (isPlaceholderRow(rawRow)) {
+        result.warnings.push(`Business Sheet "${sheetName}": example row skipped.`);
+        continue;
+      }
+      if (isTotalRow({}, rawRow)) continue;
+
+      const mapped = mapRow(rawRow, colMap);
+      const desc = String(mapped.description ?? '').trim();
+      if (!desc) continue;
+
+      const amountIn = parseAmount(mapped.amount_in);   // Jama
+      const amountOut = parseAmount(mapped.amount_out); // Naam
+      if (amountIn === 0 && amountOut === 0) continue;
+
+      const rawDate = mapped.date;
+      const dateStr = parseDate(rawDate) ?? new Date().toISOString();
+
+      if (amountIn > 0) {
+        useBusinessStore.getState().addBizTransaction(party.id, 'income', amountIn, 'Sales/Income', desc, dateStr);
+        txImported++;
+      }
+      if (amountOut > 0) {
+        useBusinessStore.getState().addBizTransaction(party.id, 'expense', amountOut, 'Purchase/Expense', desc, dateStr);
+        txImported++;
+      }
+    } catch (rowErr) {
+      result.errors.push(
+        `Row error in business sheet "${sheetName}": ${
+          rowErr instanceof Error ? rowErr.message : 'Parse error'
+        }`
+      );
+    }
+  }
+
+  result.transactionsImported += txImported;
+  result.sheetsProcessed++;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   3. CAPITAL PROJECT SHEETS (Capital Projects Pillar)
+   Each sheet → one CapitalPool in useCapitalStore.
 ───────────────────────────────────────────────────────────────────────────── */
 
 async function importCapitalSheet(
   sheetName: string,
   dataRows: Record<string, any>[],
   colMap: Record<string, string>,
-  store: ReturnType<typeof useAppStore.getState>,
   result: ImportResult
 ): Promise<void> {
-  const contactName = sheetName.trim();
+  const poolTitle = sheetName.trim();
+  const capStore = useCapitalStore.getState();
 
-  let contact = useAppStore
-    .getState()
-    .contacts.find(
-      c => c.display_name.toLowerCase() === contactName.toLowerCase()
-    );
+  let pool = capStore.capitalPools.find(
+    p => p.title.toLowerCase() === poolTitle.toLowerCase()
+  );
 
-  if (!contact) {
-    store.addContact(contactName, '', undefined, undefined, undefined);
-    contact = useAppStore
-      .getState()
-      .contacts.find(
-        c => c.display_name.toLowerCase() === contactName.toLowerCase()
-      );
-    if (contact) result.contactsImported++;
+  if (!pool) {
+    const poolId = capStore.addCapitalPool(poolTitle, 100000, 'Imported Capital Pool Project');
+    pool = useCapitalStore.getState().capitalPools.find(p => p.id === poolId);
+    if (pool) result.contactsImported++;
   }
 
-  if (!contact) {
-    result.errors.push(
-      `Could not create contact for capital sheet "${sheetName}" – skipped.`
-    );
+  if (!pool) {
+    result.errors.push(`Could not create capital pool for sheet "${sheetName}" – skipped.`);
     return;
   }
 
   let txImported = 0;
-  let statedBalance: number | null = null;
 
   for (const rawRow of dataRows) {
     try {
       if (isBlankRow(rawRow)) continue;
-      if (isTotalRow({}, rawRow)) {
-        const mapped = mapRow(rawRow, colMap);
-        statedBalance = parseAmount(mapped.running_balance ?? mapped.amount);
-        continue;
-      }
+      if (isTotalRow({}, rawRow)) continue;
 
       const mapped = mapRow(rawRow, colMap);
       const desc = String(mapped.description ?? '').trim();
       if (!desc) continue;
 
-      // Capital sheets use a single "amount" column that is an outflow (expense)
       const amount = parseAmount(mapped.amount);
-      if (amount === 0) continue;
+      if (amount <= 0) continue;
 
       const rawDate = mapped.date;
       const dateStr = parseDate(rawDate) ?? new Date().toISOString();
 
-      // Treat capital outflows as "taken" (money spent from budget)
-      useAppStore.getState().addTransaction(contact.person_id, desc, 0, amount, dateStr);
+      useCapitalStore.getState().addCapitalExpense(
+        pool.id,
+        desc,
+        1,
+        amount,
+        'Vendor',
+        'cash',
+        'Capital Outflow',
+        dateStr
+      );
       txImported++;
     } catch (rowErr) {
       result.errors.push(
@@ -586,24 +630,6 @@ async function importCapitalSheet(
 
   result.transactionsImported += txImported;
   result.sheetsProcessed++;
-
-  // Validation
-  if (statedBalance !== null) {
-    const currentContact = useAppStore
-      .getState()
-      .contacts.find(c => c.person_id === contact!.person_id);
-    if (currentContact) {
-      const computed = currentContact.transactions.reduce(
-        (acc, t) => acc + t.given_amount - t.taken_amount,
-        0
-      );
-      if (Math.abs(computed - statedBalance) > 0.01) {
-        result.warnings.push(
-          `Capital sheet "${sheetName}": computed balance ${computed.toFixed(2)} ≠ stated balance ${statedBalance.toFixed(2)}.`
-        );
-      }
-    }
-  }
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────

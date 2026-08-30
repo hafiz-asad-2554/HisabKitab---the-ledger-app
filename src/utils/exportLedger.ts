@@ -5,13 +5,53 @@ import * as Print from 'expo-print';
 import XLSX from 'xlsx';
 import { Contact, CropExpense } from '../store';
 
-/* ─── Directory Fallback Helper ─── */
+/* ─── Directory Fallback & File Conflict Helper ─── */
 function getExportDirectory(): string {
   const baseDir = FileSystem.documentDirectory || FileSystem.cacheDirectory;
   if (!baseDir) {
     throw new Error('Unable to access device storage. Neither documentDirectory nor cacheDirectory is available.');
   }
   return baseDir.endsWith('/') ? baseDir : `${baseDir}/`;
+}
+
+/** Check if local export file exists; if so, generate a unique timestamped path to prevent overwriting */
+async function getUniqueExportPath(baseName: string, ext: string): Promise<string> {
+  const dir = getExportDirectory();
+  let uri = `${dir}${baseName}.${ext}`;
+  try {
+    const info = await FileSystem.getInfoAsync(uri);
+    if (info.exists) {
+      const now = new Date();
+      const ts = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}_${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}`;
+      uri = `${dir}${baseName}_${ts}.${ext}`;
+    }
+  } catch {
+    // If check fails, use default path
+  }
+  return uri;
+}
+
+/** Helper to attempt saving directly via Android Storage Access Framework (SAF) if requested */
+async function exportWithSAF(content: string, mimeType: string, baseName: string, ext: string, isBase64: boolean): Promise<boolean> {
+  try {
+    if (FileSystem.StorageAccessFramework) {
+      const permissions = await FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync();
+      if (permissions.granted) {
+        const fileUri = await FileSystem.StorageAccessFramework.createFileAsync(
+          permissions.directoryUri,
+          `${baseName}.${ext}`,
+          mimeType
+        );
+        await FileSystem.writeAsStringAsync(fileUri, content, {
+          encoding: isBase64 ? FileSystem.EncodingType.Base64 : FileSystem.EncodingType.UTF8,
+        });
+        return true;
+      }
+    }
+  } catch (e) {
+    console.warn('[HisabKitab Export] SAF export skipped/failed, falling back to Sharing dialog:', e);
+  }
+  return false;
 }
 
 /* ─── Helpers ─── */
@@ -122,8 +162,7 @@ export async function exportLedgerXLSX(contacts: Contact[], crops: CropExpense[]
   }
 
   const wbout = XLSX.write(wb, { type: 'base64', bookType: 'xlsx' });
-  const dir = getExportDirectory();
-  const uri = dir + 'HisabKitab_Ledger.xlsx';
+  const uri = await getUniqueExportPath('HisabKitab_Ledger', 'xlsx');
   await FileSystem.writeAsStringAsync(uri, wbout, { encoding: FileSystem.EncodingType.Base64 });
   await Sharing.shareAsync(uri, {
     mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -360,8 +399,7 @@ export async function exportContactsCSV(contacts: Contact[]) {
     return [c.display_name, c.phone_number, c.email ?? '', c.notes ?? '', net.toFixed(2), statusLabel(net)];
   });
   const csv = [header, ...rows].map(r => r.map(v => `"${(v ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
-  const dir = getExportDirectory();
-  const uri = dir + 'hisabkitab_contacts.csv';
+  const uri = await getUniqueExportPath('hisabkitab_contacts', 'csv');
   await FileSystem.writeAsStringAsync(uri, csv, { encoding: FileSystem.EncodingType.UTF8 });
   await Sharing.shareAsync(uri, { mimeType: 'text/csv', dialogTitle: 'Export Contacts CSV' });
 }
@@ -374,8 +412,7 @@ export async function exportCropsCSV(crops: CropExpense[]) {
     return [c.crop_name, c.acreage.toString(), c.status, cost.toFixed(2), rev.toFixed(2), (rev - cost).toFixed(2)];
   });
   const csv = [header, ...rows].map(r => r.map(v => `"${(v ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
-  const dir = getExportDirectory();
-  const uri = dir + 'hisabkitab_crops.csv';
+  const uri = await getUniqueExportPath('hisabkitab_crops', 'csv');
   await FileSystem.writeAsStringAsync(uri, csv, { encoding: FileSystem.EncodingType.UTF8 });
   await Sharing.shareAsync(uri, { mimeType: 'text/csv', dialogTitle: 'Export Crops CSV' });
 }
