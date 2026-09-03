@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity, Modal,
   TextInput, Alert, KeyboardAvoidingView, Platform, ScrollView,
@@ -8,6 +8,8 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { useCapitalStore, CapitalExpense, PaymentMethod } from '../../store/capitalStore';
 import { useCapitalPoolSummary } from '../../hooks/useCapitalPool';
 import { COLORS } from '../../theme';
+import { SearchBar } from '../../components/SearchBar';
+import { exportCapitalPoolLedgerPDF, exportCapitalPoolLedgerXLSX } from '../../utils/exportLedger';
 
 const EXPENSE_CATEGORIES = ['Materials', 'Labour', 'Equipment', 'Transport', 'Finishing', 'Electrical', 'Plumbing', 'Other'];
 const PAYMENT_METHODS: { key: PaymentMethod; label: string; icon: string }[] = [
@@ -140,6 +142,24 @@ export default function CapitalPoolScreen() {
     />
   ), [deleteCapitalExpense]);
 
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const reversedExpenses = useMemo(() => [...summary.expenses].reverse(), [summary.expenses]);
+
+  const filteredExpenses = useMemo(() => {
+    if (!searchQuery.trim()) return reversedExpenses;
+    const q = searchQuery.trim().toLowerCase();
+    return reversedExpenses.filter(e => {
+      const itemMatch = e.item_name.toLowerCase().includes(q);
+      const vendorMatch = e.vendor_name ? e.vendor_name.toLowerCase().includes(q) : false;
+      const catMatch = e.category.toLowerCase().includes(q);
+      const payMatch = e.payment_method.toLowerCase().includes(q);
+      const costMatch = e.total_cost.toString().includes(q);
+      const dateMatch = e.expense_date.toLowerCase().includes(q);
+      return itemMatch || vendorMatch || catMatch || payMatch || costMatch || dateMatch;
+    });
+  }, [reversedExpenses, searchQuery]);
+
   return (
     <View style={styles.container}>
       {/* ── Pool Header ── */}
@@ -148,9 +168,17 @@ export default function CapitalPoolScreen() {
           <Text style={styles.poolTitle}>{pool.title}</Text>
           {pool.description ? <Text style={styles.poolDesc}>{pool.description}</Text> : null}
         </View>
-        <TouchableOpacity onPress={confirmDeletePool} style={styles.deletePoolBtn}>
-          <MaterialIcons name="delete" size={22} color={COLORS.loss} />
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          <TouchableOpacity onPress={() => exportCapitalPoolLedgerPDF(pool, summary.expenses)} style={{ padding: 6 }}>
+            <MaterialIcons name="picture-as-pdf" size={22} color="#A7F3D0" />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => exportCapitalPoolLedgerXLSX(pool, summary.expenses)} style={{ padding: 6 }}>
+            <MaterialIcons name="table-chart" size={22} color="#A7F3D0" />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={confirmDeletePool} style={styles.deletePoolBtn}>
+            <MaterialIcons name="delete" size={22} color={COLORS.loss} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* ── Summary Dashboard ── */}
@@ -209,16 +237,25 @@ export default function CapitalPoolScreen() {
         )}
       </View>
 
+      {/* ── Search Bar ── */}
+      <SearchBar
+        value={searchQuery}
+        onChangeText={setSearchQuery}
+        placeholder="Filter expenses by item, vendor, category, date…"
+      />
+
       {/* ── Expense List ── */}
-      <Text style={styles.sectionTitle}>{summary.expenses.length} Expenses</Text>
+      <Text style={styles.sectionTitle}>{filteredExpenses.length} Expenses</Text>
       <FlatList
-        data={[...summary.expenses].reverse()}
+        data={filteredExpenses}
         keyExtractor={e => e.id}
         renderItem={renderExpense}
         contentContainerStyle={styles.list}
         ListEmptyComponent={
           <View style={styles.emptyBox}>
-            <Text style={styles.emptyText}>No expenses logged yet.{'\n'}Tap + to add the first item.</Text>
+            <Text style={styles.emptyText}>
+              {searchQuery.trim() ? 'No expenses matching search.' : `No expenses logged yet.\nTap + to add the first item.`}
+            </Text>
           </View>
         }
       />

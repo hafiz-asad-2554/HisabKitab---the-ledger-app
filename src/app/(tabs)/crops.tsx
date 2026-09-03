@@ -1,9 +1,67 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, Modal, TextInput, Alert } from 'react-native';
 import { CropExpense, useAppStore } from '../../store';
 import { useRouter } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import { ContextSwitcher } from '../../components/ContextSwitcher';
+import { COLORS } from '../../theme';
+
+/* ────────────────────────────────────────── */
+/* Crop Financial Dashboard Banner          */
+/* ────────────────────────────────────────── */
+function CropPnLBanner() {
+  const crops = useAppStore(s => s.crops);
+  const metrics = useMemo(() => {
+    let totalRev = 0;
+    let totalExp = 0;
+    let activeCycles = 0;
+    let totalAcres = 0;
+
+    crops.forEach(c => {
+      if (c.status === 'ACTIVE') activeCycles++;
+      totalAcres += c.acreage || 0;
+      c.records.forEach(r => {
+        if (r.type === 'INCOME') totalRev += r.amount;
+        else if (r.type === 'EXPENSE') totalExp += r.amount;
+      });
+    });
+
+    const netPL = totalRev - totalExp;
+    return { totalRev, totalExp, netPL, activeCycles, totalAcres };
+  }, [crops]);
+
+  const isProfit = metrics.netPL >= 0;
+
+  return (
+    <View style={[styles.pnlBanner, { backgroundColor: isProfit ? '#064E3B' : '#7F1D1D' }]}>
+      <View style={styles.pnlRow}>
+        <View style={styles.pnlStat}>
+          <Text style={styles.pnlLabel}>Total Revenue</Text>
+          <Text style={[styles.pnlValue, { color: COLORS.profit }]}>
+            +{metrics.totalRev.toLocaleString('en-PK', { maximumFractionDigits: 0 })}
+          </Text>
+        </View>
+        <View style={styles.pnlDivider} />
+        <View style={styles.pnlStat}>
+          <Text style={styles.pnlLabel}>Total Input Costs</Text>
+          <Text style={[styles.pnlValue, { color: COLORS.loss }]}>
+            -{metrics.totalExp.toLocaleString('en-PK', { maximumFractionDigits: 0 })}
+          </Text>
+        </View>
+        <View style={styles.pnlDivider} />
+        <View style={styles.pnlStat}>
+          <Text style={styles.pnlLabel}>Net P/L</Text>
+          <Text style={[styles.pnlValue, { color: isProfit ? COLORS.profit : COLORS.loss, fontSize: 18 }]}>
+            {isProfit ? '+' : ''}{metrics.netPL.toLocaleString('en-PK', { maximumFractionDigits: 0 })}
+          </Text>
+        </View>
+      </View>
+      <Text style={styles.pnlFooter}>
+        {metrics.activeCycles} active cycle{metrics.activeCycles !== 1 ? 's' : ''} · {metrics.totalAcres} total acres cultivated
+      </Text>
+    </View>
+  );
+}
 
 export default function CropsScreen() {
   const router = useRouter();
@@ -20,9 +78,6 @@ export default function CropsScreen() {
   const [editCropTarget, setEditCropTarget] = useState(null as any);
   const [editName, setEditName] = useState('');
   const [editAcreage, setEditAcreage] = useState('');
-
-
-
 
   const handleAddCrop = () => {
     if (!cropName.trim() || !acreage.trim()) {
@@ -92,8 +147,6 @@ export default function CropsScreen() {
             </Text>
           </View>
         </View>
-
-
       </TouchableOpacity>
     );
   };
@@ -101,6 +154,7 @@ export default function CropsScreen() {
   return (
     <View style={styles.container}>
       <ContextSwitcher activePillar="crops" />
+      <CropPnLBanner />
       <Text style={styles.sectionTitle}>Active Crop Cycles</Text>
 
       <FlatList
@@ -196,6 +250,13 @@ export default function CropsScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0F172A' },
+  pnlBanner: { margin: 16, marginBottom: 4, padding: 16, borderRadius: 12, borderWidth: 1, borderColor: '#334155' },
+  pnlRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  pnlStat: { flex: 1, alignItems: 'center' },
+  pnlLabel: { fontSize: 10, color: '#CBD5E1', textTransform: 'uppercase', marginBottom: 4, fontWeight: '600' },
+  pnlValue: { fontSize: 15, fontWeight: '800' },
+  pnlDivider: { width: 1, height: 32, backgroundColor: 'rgba(255,255,255,0.15)' },
+  pnlFooter: { fontSize: 11, color: '#94A3B8', textAlign: 'center', marginTop: 12, paddingTop: 8, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.1)' },
   sectionTitle: { fontSize: 20, fontWeight: 'bold', color: '#F8FAFC', marginHorizontal: 16, marginTop: 16, marginBottom: 12 },
   listContainer: { paddingHorizontal: 16, paddingBottom: 100 },
   cropCard: { backgroundColor: '#1E293B', padding: 16, borderRadius: 12, marginBottom: 12 },

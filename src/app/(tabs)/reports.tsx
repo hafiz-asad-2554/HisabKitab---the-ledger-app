@@ -62,33 +62,35 @@ export default function Reports() {
       </Text>
 
       {/* Export Section */}
-      <Text style={styles.sectionHeader}>Exports</Text>
+      <Text style={styles.sectionHeader}>Master Database Exports</Text>
 
-      <TouchableOpacity style={styles.card} onPress={() => run(() => exportFullLedgerPDF(contacts, crops))} disabled={exporting}>
+      <TouchableOpacity style={styles.card} onPress={() => run(() => exportFullLedgerPDF())} disabled={exporting}>
         {exporting ? <ActivityIndicator color="#10B981" /> : <>
-          <Text style={styles.cardTitle}>📄 Full Ledger PDF</Text>
-          <Text style={styles.cardCopy}>Summary Dashboard + per-contact account statements + crop analytics (matches reference format)</Text>
+          <Text style={styles.cardTitle}>📄 Master Database PDF Report</Text>
+          <Text style={styles.cardCopy}>Includes overall financial summary dashboard + detailed statements for Personal, Business, Capital, and Agricultural ledgers.</Text>
         </>}
       </TouchableOpacity>
 
-      <TouchableOpacity style={styles.card} onPress={() => run(() => exportLedgerXLSX(contacts, crops))} disabled={exporting}>
+      <TouchableOpacity style={styles.card} onPress={() => run(() => exportLedgerXLSX())} disabled={exporting}>
         {exporting ? <ActivityIndicator color="#10B981" /> : <>
-          <Text style={styles.cardTitle}>📊 Full Ledger Excel (.xlsx)</Text>
-          <Text style={styles.cardCopy}>Multi-sheet: Summary Dashboard · Account Statements · Crop Analytics</Text>
+          <Text style={styles.cardTitle}>📊 Master Database Excel (.xlsx)</Text>
+          <Text style={styles.cardCopy}>Complete multi-sheet Excel workbook containing Master Dashboard + individual sheets for Personal, Business, Capital, and Crops.</Text>
         </>}
       </TouchableOpacity>
+
+      <Text style={[styles.sectionHeader, { marginTop: 16 }]}>Category CSV Summaries</Text>
 
       <TouchableOpacity style={styles.card} onPress={() => run(() => exportContactsCSV(contacts))} disabled={exporting}>
         {exporting ? <ActivityIndicator color="#10B981" /> : <>
-          <Text style={styles.cardTitle}>📋 Contacts CSV</Text>
+          <Text style={styles.cardTitle}>📋 Personal Contacts CSV</Text>
           <Text style={styles.cardCopy}>Name, Phone, Email, Net Balance, Status</Text>
         </>}
       </TouchableOpacity>
 
       <TouchableOpacity style={styles.card} onPress={() => run(() => exportCropsCSV(crops))} disabled={exporting}>
         {exporting ? <ActivityIndicator color="#10B981" /> : <>
-          <Text style={styles.cardTitle}>🌾 Crops CSV</Text>
-          <Text style={styles.cardCopy}>Crop cycles with cost, revenue, and net profit/loss</Text>
+          <Text style={styles.cardTitle}>🌾 Crop Cycles CSV</Text>
+          <Text style={styles.cardCopy}>Crop cycles with total cost, revenue, and net profit/loss</Text>
         </>}
       </TouchableOpacity>
 

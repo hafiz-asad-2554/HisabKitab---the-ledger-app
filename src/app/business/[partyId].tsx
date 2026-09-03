@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity, Modal,
   TextInput, Alert, KeyboardAvoidingView, Platform, ScrollView,
@@ -8,6 +8,8 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { useBusinessStore, BizTxType, BusinessTransaction } from '../../store/businessStore';
 import { usePartyPnL } from '../../hooks/useBusinessLedger';
 import { COLORS } from '../../theme';
+import { SearchBar } from '../../components/SearchBar';
+import { exportBusinessPartyLedgerPDF, exportBusinessPartyLedgerXLSX } from '../../utils/exportLedger';
 
 const TX_CATEGORIES = ['Sales', 'Purchase', 'Return', 'COGS', 'Cash In', 'Cash Out', 'Advance', 'Other'];
 const TX_TYPES: { key: BizTxType; label: string; color: string }[] = [
@@ -115,6 +117,23 @@ export default function BusinessPartyScreen() {
     />
   ), [deleteBizTransaction]);
 
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const reversedTxns = useMemo(() => [...txns].reverse(), [txns]);
+
+  const filteredTxns = useMemo(() => {
+    if (!searchQuery.trim()) return reversedTxns;
+    const q = searchQuery.trim().toLowerCase();
+    return reversedTxns.filter(t => {
+      const catMatch = t.category.toLowerCase().includes(q);
+      const descMatch = t.description ? t.description.toLowerCase().includes(q) : false;
+      const typeMatch = t.type.toLowerCase().includes(q);
+      const amountMatch = t.amount.toString().includes(q);
+      const dateMatch = t.transaction_date.toLowerCase().includes(q);
+      return catMatch || descMatch || typeMatch || amountMatch || dateMatch;
+    });
+  }, [reversedTxns, searchQuery]);
+
   return (
     <View style={styles.container}>
       {/* ── Party Header ── */}
@@ -129,9 +148,17 @@ export default function BusinessPartyScreen() {
             {party.phone ? `  ·  ${party.phone}` : ''}
           </Text>
         </View>
-        <TouchableOpacity onPress={confirmDelete} style={styles.deletePartyBtn}>
-          <MaterialIcons name="delete" size={22} color={COLORS.loss} />
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          <TouchableOpacity onPress={() => exportBusinessPartyLedgerPDF(party, txns)} style={{ padding: 6 }}>
+            <MaterialIcons name="picture-as-pdf" size={22} color="#A7F3D0" />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => exportBusinessPartyLedgerXLSX(party, txns)} style={{ padding: 6 }}>
+            <MaterialIcons name="table-chart" size={22} color="#A7F3D0" />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={confirmDelete} style={styles.deletePartyBtn}>
+            <MaterialIcons name="delete" size={22} color={COLORS.loss} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* ── Balance Card ── */}
@@ -152,16 +179,25 @@ export default function BusinessPartyScreen() {
         </View>
       </View>
 
+      {/* ── Search Bar ── */}
+      <SearchBar
+        value={searchQuery}
+        onChangeText={setSearchQuery}
+        placeholder="Filter transactions by category, description, date…"
+      />
+
       {/* ── Transaction List ── */}
-      <Text style={styles.sectionTitle}>{txns.length} Transactions</Text>
+      <Text style={styles.sectionTitle}>{filteredTxns.length} Transactions</Text>
       <FlatList
-        data={[...txns].reverse()}
+        data={filteredTxns}
         keyExtractor={t => t.id}
         renderItem={renderTx}
         contentContainerStyle={styles.list}
         ListEmptyComponent={
           <View style={styles.emptyBox}>
-            <Text style={styles.emptyText}>No transactions yet. Tap + to add one.</Text>
+            <Text style={styles.emptyText}>
+              {searchQuery.trim() ? 'No transactions matching search.' : 'No transactions yet. Tap + to add one.'}
+            </Text>
           </View>
         }
       />

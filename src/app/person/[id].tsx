@@ -11,7 +11,8 @@ import * as Contacts from 'expo-contacts/legacy';
 import { useAppStore, Transaction } from '../../store';
 import { COLORS } from '../../theme';
 import { runningBalance } from '../../sync';
-import { exportContactLedgerPDF } from '../../utils/exportLedger';
+import { exportContactLedgerPDF, exportContactLedgerXLSX } from '../../utils/exportLedger';
+import { SearchBar } from '../../components/SearchBar';
 import { MaterialIcons } from '@expo/vector-icons';
 
 type TxKind = 'GIVEN' | 'TAKEN';
@@ -117,6 +118,8 @@ export default function Ledger() {
 
   // Avatar picker action sheet state
   const [avatarMenuVisible, setAvatarMenuVisible] = useState(false);
+  // Transaction Search Bar State
+  const [searchQuery, setSearchQuery] = useState('');
 
   const ordered = useMemo(
     () =>
@@ -129,6 +132,18 @@ export default function Ledger() {
         : [],
     [contact]
   );
+
+  const filteredTransactions = useMemo(() => {
+    if (!searchQuery.trim()) return ordered;
+    const q = searchQuery.trim().toLowerCase();
+    return ordered.filter(t => {
+      const descMatch = t.description.toLowerCase().includes(q);
+      const givenMatch = t.given_amount.toString().includes(q);
+      const takenMatch = t.taken_amount.toString().includes(q);
+      const dateMatch = t.custom_transaction_date.toLowerCase().includes(q);
+      return descMatch || givenMatch || takenMatch || dateMatch;
+    });
+  }, [ordered, searchQuery]);
 
   // Memoized running balance calculation to prevent recalculating 3x inline per render pass
   const currentRunningBalance = useMemo(
@@ -187,6 +202,14 @@ export default function Ledger() {
     void exportContactLedgerPDF(contact);
   };
 
+  const handleExportXLSX = () => {
+    if (isSharedLedger) {
+      Alert.alert('Export Restricted', 'Exporting Excel is disabled for secondary users on shared ledgers.');
+      return;
+    }
+    void exportContactLedgerXLSX(contact);
+  };
+
   const openEditModal = () => {
     setEditName(contact.display_name);
     setEditPhone(contact.phone_number || '');
@@ -242,6 +265,8 @@ export default function Ledger() {
       contact.display_name,
       'Choose an action',
       [
+        { text: 'Export PDF Statement', onPress: handleExportPDF },
+        { text: 'Export Excel Statement (.xlsx)', onPress: handleExportXLSX },
         { text: 'Edit Details', onPress: openEditModal },
         {
           text: 'Delete Ledger',
@@ -345,9 +370,14 @@ export default function Ledger() {
 
         <View style={styles.headerActions}>
           {!isSharedLedger && (
-            <TouchableOpacity style={styles.iconBtn} onPress={handleExportPDF}>
-              <MaterialIcons name="picture-as-pdf" size={22} color="#A7F3D0" />
-            </TouchableOpacity>
+            <>
+              <TouchableOpacity style={styles.iconBtn} onPress={handleExportPDF}>
+                <MaterialIcons name="picture-as-pdf" size={22} color="#A7F3D0" />
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.iconBtn} onPress={handleExportXLSX}>
+                <MaterialIcons name="table-chart" size={22} color="#A7F3D0" />
+              </TouchableOpacity>
+            </>
           )}
           <TouchableOpacity style={styles.iconBtn} onPress={showMenu}>
             <MaterialIcons name="more-vert" size={24} color="#F8FAFC" />
@@ -355,11 +385,25 @@ export default function Ledger() {
         </View>
       </View>
 
+      {/* Transaction Search Bar */}
+      <SearchBar
+        value={searchQuery}
+        onChangeText={setSearchQuery}
+        placeholder="Filter transactions by text or date…"
+      />
+
       <FlatList
-        data={ordered}
+        data={filteredTransactions}
         keyExtractor={x => x.transaction_id}
         contentContainerStyle={styles.list}
         renderItem={renderTransactionItem}
+        ListEmptyComponent={
+          <View style={{ padding: 32, alignItems: 'center' }}>
+            <Text style={{ color: COLORS.textSecondary, textAlign: 'center' }}>
+              {searchQuery.trim() ? 'No transactions matching search.' : 'No transactions logged yet.'}
+            </Text>
+          </View>
+        }
       />
 
       <TouchableOpacity style={styles.fab} onPress={() => start()}>

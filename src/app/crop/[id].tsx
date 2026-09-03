@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity, Modal,
   TextInput, Alert, ScrollView, Pressable, KeyboardAvoidingView, Platform,
@@ -7,6 +7,8 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { CropRecord, useAppStore, ExpenseCategory, ExpenseType } from '../../store';
 import { COLORS } from '../../theme';
 import { MaterialIcons } from '@expo/vector-icons';
+import { SearchBar } from '../../components/SearchBar';
+import { exportCropLedgerPDF, exportCropLedgerXLSX } from '../../utils/exportLedger';
 
 export default function CropLedgerScreen() {
   const { id, isShared } = useLocalSearchParams<{ id: string; isShared?: string }>();
@@ -166,6 +168,22 @@ export default function CropLedgerScreen() {
       ]
     );
 
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const recordsReversed = useMemo(() => [...crop.records].reverse(), [crop.records]);
+
+  const filteredRecords = useMemo(() => {
+    if (!searchQuery.trim()) return recordsReversed;
+    const q = searchQuery.trim().toLowerCase();
+    return recordsReversed.filter(r => {
+      const descMatch = r.description.toLowerCase().includes(q);
+      const catMatch = r.category.toLowerCase().replace('_', ' ').includes(q);
+      const amountMatch = r.amount.toString().includes(q);
+      const dateMatch = r.date.toLowerCase().includes(q);
+      return descMatch || catMatch || amountMatch || dateMatch;
+    });
+  }, [recordsReversed, searchQuery]);
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -174,17 +192,25 @@ export default function CropLedgerScreen() {
             <Text style={styles.cropName}>{crop.crop_name}</Text>
             <Text style={styles.editHint}>Edit cycle</Text>
           </TouchableOpacity>
-          <TouchableOpacity
-            style={[
-              styles.statusBadge,
-              { backgroundColor: crop.status === 'ACTIVE' ? '#2563EB' : '#475569' },
-            ]}
-            onPress={() =>
-              updateCropStatus(crop.crop_id, crop.status === 'ACTIVE' ? 'COMPLETED' : 'ACTIVE')
-            }
-          >
-            <Text style={styles.statusText}>{crop.status}</Text>
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <TouchableOpacity onPress={() => exportCropLedgerPDF(crop)} style={{ padding: 4 }}>
+              <MaterialIcons name="picture-as-pdf" size={22} color="#A7F3D0" />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => exportCropLedgerXLSX(crop)} style={{ padding: 4 }}>
+              <MaterialIcons name="table-chart" size={22} color="#A7F3D0" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.statusBadge,
+                { backgroundColor: crop.status === 'ACTIVE' ? '#2563EB' : '#475569' },
+              ]}
+              onPress={() =>
+                updateCropStatus(crop.crop_id, crop.status === 'ACTIVE' ? 'COMPLETED' : 'ACTIVE')
+              }
+            >
+              <Text style={styles.statusText}>{crop.status}</Text>
+            </TouchableOpacity>
+          </View>
         </View>
         <Text style={styles.acreageText}>{crop.acreage} Acres Cultivation</Text>
 
@@ -209,14 +235,22 @@ export default function CropLedgerScreen() {
         </View>
       </View>
 
+      <SearchBar
+        value={searchQuery}
+        onChangeText={setSearchQuery}
+        placeholder="Search crop inputs, category, or amount…"
+      />
+
       <FlatList
-        data={[...crop.records].reverse()}
+        data={filteredRecords}
         keyExtractor={item => item.record_id}
         renderItem={renderRecord}
         contentContainerStyle={styles.listContainer}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>No resource inputs logged yet.</Text>
+            <Text style={styles.emptyText}>
+              {searchQuery.trim() ? 'No entries matching search.' : 'No resource inputs logged yet.'}
+            </Text>
           </View>
         }
       />
